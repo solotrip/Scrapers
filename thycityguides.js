@@ -21,6 +21,11 @@ async function findQuickInfo(url, page) {
 
     const quickInfo = await $("[class='blue bold' ]").text();
     await console.log("quick info:", quickInfo);
+
+    const data = {
+      quickInfo: quickInfo,
+    };
+    return data;
   } catch (error) {
     console.error(error);
   }
@@ -30,6 +35,8 @@ async function main() {
   browser = await puppeteer.launch({ headless: false });
 
   const cityPage = await browser.newPage();
+
+  const client = await cityPage.target().createCDPSession();
 
   cities = [
     "istanbul",
@@ -198,12 +205,15 @@ async function main() {
   ];
 
   for (var i = 0; i < cities.length; i++) {
-    await findQuickInfo(
+    const quicks = await findQuickInfo(
       "https://www.turkishairlines.com/en-my/flights/flights-to-" + cities[i],
       cityPage
     );
+    console.log(quicks);
+    await client.send("Network.clearBrowserCookies");
+    await client.send("Network.clearBrowserCache");
 
-    await cityPage.waitFor(10000);
+    //await cityPage.waitFor(10000);
   }
 }
 
