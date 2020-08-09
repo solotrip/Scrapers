@@ -1,7 +1,10 @@
 const request = require("request-promise");
 const cheerio = require("cheerio");
+const _ = require('lodash');
+const safeEval = require('safe-eval');
 
 const url = "https://4sq-sitemap.s3.amazonaws.com/sitemap_index.xml";
+const scriptRegex = /VenueDetailPage\.init\((.+?)\);/;
 
 async function getSiteMap() {
   try {
@@ -62,6 +65,26 @@ async function getVenue(venueUrl) {
     const htmlResult = await request.get(venueUrl);
     const $ = await cheerio.load(htmlResult);
 
+    const scriptResults = [...$('script').get()].filter(a => a.children && a.children[0] && a.children[0].data.includes('VenueDetailPage.init'));
+    const script = _.get(scriptResults, '[0].children[0].data');
+    if (script) {
+      const dataString = scriptRegex.exec(script)
+      if (dataString) {
+        const data = safeEval(`(${dataString[1]})`);
+        const filteredData = _.pick(data, [
+          'relatedVenuesResponse',
+          'tips',
+          'venue',
+          'hasPhoto',
+          'topPhotos',
+          'enableLeaveTip',
+          'initialPhoto',
+          'subvenueGroupingOnServer',
+          'tipSort'
+        ])
+        console.log(filteredData);
+      }
+    }
     const ratingOutOf10 = $("[itemprop='ratingValue']").text();
     const name = $("[itemprop='name']").text();
     const category = $("[class='unlinkedCategory']").text();
